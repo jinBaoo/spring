@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="8.22">
+<file name="C:\yinjinbao\spring-framework-5.2.x\spring.yin\src\main\java\Aservice.java">
+<error line="1" severity="error" message="header.missing" source="io.spring.javaformat.checkstyle.check.SpringHeaderCheck"/>
+</file>
+</checkstyle>
