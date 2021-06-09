@@ -199,7 +199,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 
 	@Override
 	public Object getBean(String name) throws BeansException {
-		//空方法，调用doGetBean
+		//空壳方法，调用doGetBean
 		return doGetBean(name, null, null, false);
 	}
 
@@ -246,6 +246,10 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		//这个方法非常重要，但是和笔者今天要分析的循环依赖没什么很大的关系
 		//读者可以简单的认为就是对beanName做一个校验特殊字符串的功能
 		//transformedBeanName(name)这里的name就是bean的名字
+		/**
+		 * 1.对beanName进行验证合法性
+		 * 2.fb
+		 */
 		final String beanName = transformedBeanName(name);
 
 		//定义了一个对象，用来存将来返回出来的bean
@@ -380,6 +384,18 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		 **/
 
 		// Eagerly check singleton cache for manually registered singletons.
+		/**
+		 * 6. 第一次getSingleton，从单例池拿是否存在，单例的第一次一般是不存在，并且会判断是否在正在创建bean的set集合中。
+		 * singletonObjects 一级缓存，完整的bean
+		 * singletonFactories 二级缓存，存的是代理bean工厂
+		 * earlySingletonObjects 三级缓存，一般是是半成品的bean
+		 * a. 如果存在，直接返回
+		 * b. 如果不存在，并且不在正在创建bean的set集合中，直接返回null
+		 * c. 如果不存在，并且在正在创建bean的set集合中。从三级缓存拿。
+		 * ⅰ. 存在，直接三级缓存拿。
+		 * ⅱ. 不存在，通过二级缓存，代理的bean工厂拿，获得该bean，然后将得到bean放到三级缓存中，移出二级缓存。（原因是生产bean工厂周期比较长的。）
+		 */
+		//1.为了循环依赖 2验证这个当前对象是不是bean -》 存在容器当中
 		Object sharedInstance = getSingleton(beanName);
 		/**
 		 * 如果sharedInstance不等于空直接返回
@@ -392,6 +408,9 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		 * 什么时候等于空？
 		 * 上文已经解释过了，创建对象的时候调用就会等于空
 		 */
+		//什么情况下不等于null
+		//1.对象被提前创建不包含循环依赖提前创建 多线程
+		//2.存在循环依赖的时候会提前创建
 		if (sharedInstance != null && args == null) {
 			if (logger.isTraceEnabled()) {
 				if (isSingletonCurrentlyInCreation(beanName)) {
@@ -403,9 +422,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				}
 			}
 			bean = getObjectForBeanInstance(sharedInstance, name, beanName, null);
-		}
-
-		else {
+		} else {
 			// Fail if we're already creating this bean instance:
 			// We're assumably within a circular reference.
 			/**
@@ -468,14 +485,20 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				}
 
 				// Create bean instance.
+				/**
+				 * 10. 第二次getSingleton
+				 * a. 首先将beanName放到正在创建bean的set集合中，表示正在创建该bean
+				 * b. 然后会调用二级缓存去获取bean，lambda延迟机制，就会调用表达式中，也就是createBean，这时候是正在获取代理bean工厂会走一个完整的bean 的生命周期。
+				 * c. 然后从bean工厂获取bean。
+				 */
 				if (mbd.isSingleton()) {
+					//实例化bean  bean的生命周期在这个getSingleton走完
 					sharedInstance = getSingleton(beanName, () -> {
 						try {
-							//完成了目标对象的创建
+							//完成了目标对象的创建 ，完成bean的生命周期
 							//如果需要代理，还完成代理
 							return createBean(beanName, mbd, args);
-						}
-						catch (BeansException ex) {
+						} catch (BeansException ex) {
 							// Explicitly remove instance from singleton cache: It might have been put there
 							// eagerly by the creation process, to allow for circular reference resolution.
 							// Also remove any beans that received a temporary reference to the bean.
@@ -484,9 +507,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 						}
 					});
 					bean = getObjectForBeanInstance(sharedInstance, name, beanName, mbd);
-				}
-
-				else if (mbd.isPrototype()) {
+				} else if (mbd.isPrototype()) {
 					// It's a prototype -> create a new instance.
 					Object prototypeInstance = null;
 					try {
@@ -497,9 +518,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 						afterPrototypeCreation(beanName);
 					}
 					bean = getObjectForBeanInstance(prototypeInstance, name, beanName, mbd);
-				}
-
-				else {
+				} else {
 					String scopeName = mbd.getScope();
 					if (!StringUtils.hasLength(scopeName)) {
 						throw new IllegalStateException("No scope name defined for bean ´" + beanName + "'");
@@ -519,8 +538,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 							}
 						});
 						bean = getObjectForBeanInstance(scopedInstance, name, beanName, mbd);
-					}
-					catch (IllegalStateException ex) {
+					} catch (IllegalStateException ex) {
 						throw new BeanCreationException(beanName,
 								"Scope '" + scopeName + "' is not active for the current thread; consider " +
 								"defining a scoped proxy for this bean if you intend to refer to it from a singleton",

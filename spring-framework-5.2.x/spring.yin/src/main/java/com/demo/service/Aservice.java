@@ -2,7 +2,7 @@ package com.demo.service;
 
 import org.springframework.stereotype.Component;
 
-@Component
+//@Component
 public class Aservice {
 	private BService bService;
 	public Aservice() {

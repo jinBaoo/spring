@@ -78,6 +78,7 @@ import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
 import org.springframework.lang.Nullable;
+import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
@@ -531,15 +532,19 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 
 				// Invoke factory processors registered as beans in the context.
 				//完成所谓的扫描
+				//执行invokeBeanFactoryPostProcessors()，主要的作用是扫描包和parse (类--->beanDefinition)
 				invokeBeanFactoryPostProcessors(beanFactory);
 
 				// Register bean processors that intercept bean creation.
+				//注册后置处理器
 				registerBeanPostProcessors(beanFactory);
 
 				// Initialize message source for this context.
+				//国际化
 				initMessageSource();
 
 				// Initialize event multicaster for this context.
+				//事件编程
 				initApplicationEventMulticaster();
 
 				// Initialize other special beans in specific context subclasses.
@@ -550,6 +555,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 
 				// Instantiate all remaining (non-lazy-init) singletons.
 				//spring开始实例化单例的类
+				//比较重要的，也是将bd变成bean的方法 finishBeanFactoryInitialization()，实例化非延迟的单例
 				finishBeanFactoryInitialization(beanFactory);
 
 				// Last step: publish corresponding event.
@@ -878,7 +884,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		beanFactory.freezeConfiguration();
 
 		// Instantiate all remaining (non-lazy-init) singletons.
-		//实例化所有的单例，非lazy
+		//实例化所有的单例，非lazy，完成bean生命周期
 		beanFactory.preInstantiateSingletons();
 	}
 
